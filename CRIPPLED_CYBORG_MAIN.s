@@ -1,5 +1,5 @@
 ;*** MiniStartup by Photon ***
-	INCDIR	"NAS:AMIGA/CODE/KONEY/"
+	INCDIR	"NAS:AMIGA/CODE/crippled_cyborg_amiga/"
 	SECTION	"Code",CODE
 	INCLUDE	"PhotonsMiniWrapper1.04!.S"
 	INCLUDE	"Blitter-Register-List.S"	;use if you like ;)
@@ -80,7 +80,7 @@ Demo:	;a4=VBR, a6=Custom Registers Base addr
 	sub.l	a1,a1
 	sub.l	a2,a2
 	moveq	#0,d0
-	MOVE.W	#2,P61_InitPos	; TRACK START OFFSET
+	;MOVE.W	#9,P61_InitPos	; TRACK START OFFSET
 	jsr	P61_Init
 	MOVEM.L (SP)+,D0-A6
 
@@ -113,7 +113,7 @@ MainLoop:
 	;MOVE.B	#2,SCROLL_SHIFT
 	;BSR.W	__SCROLL_BG_LEFT	; SHIFT LEFT
 	MOVE.L	BGPLANE1,SCROLL_PLANE
-	MOVE.B	AUDIOCHANLEVEL1,SCROLL_SHIFT
+	MOVE.B	AUDIOCHANLEVEL2,SCROLL_SHIFT
 	BSR.W	__SCROLL_BG_LEFT	; SHIFT LEFT
 	MOVE.L	BGPLANE2,SCROLL_PLANE
 	MOVE.B	AUDIOCHANLEVEL3,SCROLL_SHIFT
@@ -122,6 +122,26 @@ MainLoop:
 	MOVE.B	AUDIOCHANLEVEL0,SCROLL_SHIFT
 	BSR.W	__SCROLL_BG_LEFT	; SHIFT LEFT
 
+	; ## LOGO ##
+	MOVE.B	SPR_0_POS,D0
+	SUB.B	AUDIOCHANLEVEL1,D0
+	SUB.B	AUDIOCHANLEVEL1,D0
+	MOVE.B	D0,SPRT_K_POS
+
+	MOVE.B	SPR_1_POS,D0
+	SUB.B	AUDIOCHANLEVEL1,D0
+	MOVE.B	D0,SPRT_O_POS
+
+	;MOVE.B	SPR_2_POS,SPRT_N_POS
+
+	MOVE.B	SPR_3_POS,D0
+	ADD.B	AUDIOCHANLEVEL1,D0
+	MOVE.B	D0,SPRT_E_POS
+
+	MOVE.B	SPR_4_POS,D0
+	ADD.B	AUDIOCHANLEVEL1,D0
+	ADD.B	AUDIOCHANLEVEL1,D0
+	MOVE.B	D0,SPRT_Y_POS
 	;*--- main loop end ---*
 
 	ENDING_CODE:
@@ -293,71 +313,51 @@ __SET_PT_VISUALS:
 	MOVEM.L D0-A6,-(SP)
 
 	; GLITCH
-	LEA	P61_visuctr0(PC),A0; which channel? 0-3
+	LEA	P61_visuctr0(PC),A0 ; which channel? 0-3
 	;CLR.W	$100		; DEBUG | w 0 100 2
-	MOVEQ	#15,D0		; maxvalue
+	MOVEQ	#45,D0		; maxvalue
 	SUB.W	(A0),D0		; -#frames/irqs since instrument trigger
 	BPL.S	.ok0		; below minvalue?
 	MOVEQ	#0,D0		; then set to minvalue
 	.ok0:
+	CMP.W	#16,D0
+	BLO.W	.keepValue
+	MOVE.W	#15,D0
+	.keepValue:	
 	MOVE.B	D0,AUDIOCHANLEVEL0	; RESET
 	_ok0:
 
-	LEA	Palette,A1
 	; KICK
-	lea	P61_visuctr1(PC),a0; which channel? 0-3
-	moveq	#15,d0		; maxvalue
+	lea	P61_visuctr1(PC),a0 ; which channel? 0-3
+	moveq	#8,d0		; maxvalue
 	sub.w	(a0),d0		; -#frames/irqs since instrument trigger
 	bpl.s	.ok1		; below minvalue?
 	moveq	#0,d0		; then set to minvalue
 	.ok1:
 	MOVE.B	D0,AUDIOCHANLEVEL1	; RESET
-	DIVU.W	#$2,D0		; start from a darker shade
-	ADD.W	#$2,D0		; start from a darker shade
+	MULU.W	#$2,D0		; start from a darker shade
 	MOVE.L	D0,D3
 	ROL.L	#$4,D3		; expand bits to green
-	;ADD.L	#1,D3		; makes color a bit geener
 	ADD.L	D3,D0
 	ROL.L	#$4,D3
 	ADD.L	D3,D0		; expand bits to red
-	;MOVE.W	D0,14(A1)		; poke WHITE color now
+	MOVE.W	D0,LOGOCOL1	; poke WHITE color now
+	MOVE.W	D0,LOGOCOL2	; poke WHITE color now
+	MOVE.W	D0,LOGOCOL3	; poke WHITE color now
 	_ok1:
 
 	; BASS
-	lea	P61_visuctr2(PC),a0; which channel? 0-3
+	lea	P61_visuctr2(PC),a0 ; which channel? 0-3
 	moveq	#15,d0		; maxvalue
 	sub.w	(a0),d0		; -#frames/irqs since instrument trigger
 	bpl.s	.ok2		; below minvalue?
 	moveq	#0,d0		; then set to minvalue
 	.ok2:
-	MOVE.W	D0,AUDIOCHANLEVEL2	; RESET
-	MOVE.L	D0,D5
-	DIVU.W	#$3,D0		; start from a darker shade
-	MOVE.L	D0,D3
-
-	ANDI.W	#1,D5
-	BEQ.S	.even
-	.odd:
-	ROL.L	#$4,D3		; expand bits to green
-	ADD.L	#1,D3		; makes color a bit geener
-	ADD.L	D3,D0
-	ROL.L	#$4,D3
-	;ADD.L	#0,D3		; makes color a bit geener
-	ADD.L	D3,D0		; expand bits to red
-	BRA.S	.done
-	.even:
-	ROL.L	#$4,D3		; expand bits to green
-	ADD.L	#2,D3		; makes color a bit geener
-	ADD.L	D3,D0
-	ROL.L	#$4,D3
-	ADD.L	#1,D3		; makes color a bit geener
-	ADD.L	D3,D0		; expand bits to red
-	.done:
-	;MOVE.W	D0,6(A1)		; poke WHITE color now
+	MOVE.B	D0,AUDIOCHANLEVEL2	; RESET
 	_ok2:
 
 	; CYBORG
-	LEA	P61_visuctr3(PC),A0; which channel? 0-3
+	LEA	P61_visuctr3(PC),A0 ; which channel? 0-3
 	MOVEQ	#15,D0		; maxvalue
 	SUB.W	(A0),D0		; -#frames/irqs since instrument trigger
 	BPL.S	.ok3		; below minvalue?
@@ -384,16 +384,22 @@ BGPLANE0:		DC.L BG1
 BGPLANE1:		DC.L BG1+bpl*h
 BGPLANE2:		DC.L BG1+bpl*h*2
 BGPLANE3:		DC.L BG1+bpl*h*3
+SPR_0_POS:	DC.B $7A		; K
+SPR_1_POS:	DC.B $83		; O
+SPR_2_POS:	DC.B $8C		; N
+SPR_3_POS:	DC.B $95		; E
+SPR_4_POS:	DC.B $9E		; Y
+		EVEN
 
 SCROLL_PLANE:	DC.L 0
 SCROLL_SHIFT:	DC.B 0
 		EVEN
 
 PALETTEBUFFERED:	;INCLUDE "BG_JPG_DITHER_PALETTE.s"
-	DC.W $0180,$0010,$0182,$0000,$0184,$0111,$0186,$0122
-	DC.W $0188,$0333,$018A,$0444,$018C,$0555,$018E,$0556
-	DC.W $0190,$0666,$0192,$0888,$0194,$0999,$0196,$0AAA
-	DC.W $0198,$09AA,$019A,$0FFF,$019C,$0FFF,$019E,$0FFF
+	DC.W $0180,$0000,$0182,$0334,$0184,$0445,$0186,$0556
+	DC.W $0188,$0667,$018A,$0333,$018C,$0667,$018E,$0777
+	DC.W $0190,$0888,$0192,$0888,$0194,$0999,$0196,$0AAA
+	DC.W $0198,$0BBB,$019A,$0CCC,$019C,$0DDD,$019E,$0FFF
 
 	;*******************************************************************************
 	SECTION	ChipData,DATA_C	;declared data that must be in chipmem
@@ -449,10 +455,15 @@ SpritePointers:
 	DC.W $138,0,$13A,0	; 6
 	DC.W $13C,0,$13E,0	; 7
 
-	DC.W	$1A6,$000	; COLOR19
-	DC.W	$1AE,$000	; COLOR23
-	DC.W	$1B6,$000	; COLOR2
-
+	DC.W $1A6
+	LOGOCOL1:
+	DC.W $000	; COLOR0-1
+	DC.W $1AE
+	LOGOCOL2:
+	DC.W $000	; COLOR2-3
+	DC.W $1B6
+	LOGOCOL3:
+	DC.W $000	; COLOR4-5
 
 COPPERWAITS:
 	; HW DISPLACEMENT
