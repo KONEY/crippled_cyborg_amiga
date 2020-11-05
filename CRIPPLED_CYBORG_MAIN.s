@@ -13,7 +13,10 @@ bpl=	w/16*2		;byte-width of 1 bitplane line (40)
 bwid=	bpls*bpl		;byte-width of 1 pixel line (all bpls)
 blitsize=	h*64+w/16	;
 blitsizeF=%000000000000010101
-bplsize=	bpl*h		;
+bplsize=	bpl*h
+hband=	10
+hblit=	h-hband
+;*************
 ;*************
 
 ;********** Demo **********	;Demo-specific non-startup code below.
@@ -41,6 +44,7 @@ Demo:	;a4=VBR, a6=Custom Registers Base addr
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
 	BSR.W	__InitCopperPalette
 	BSR.W	__ADD_BLITTER_WORD
+	BSR.W	__CREATESCROLLSPACE
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
 
 	; #### Point LOGO sprites
@@ -80,7 +84,7 @@ Demo:	;a4=VBR, a6=Custom Registers Base addr
 	sub.l	a1,a1
 	sub.l	a2,a2
 	moveq	#0,d0
-	;MOVE.W	#9,P61_InitPos	; TRACK START OFFSET
+	MOVE.W	#6,P61_InitPos	; TRACK START OFFSET
 	jsr	P61_Init
 	MOVEM.L (SP)+,D0-A6
 
@@ -221,6 +225,21 @@ __ADD_BLITTER_WORD:
 	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
 	RTS
 
+__CREATESCROLLSPACE:
+	MOVEM.L	D0-A6,-(SP)	; SAVE TO STACK
+	MOVEQ	#bpls-1,D1	; UGUALI PER TUTTI I BITPLANE
+	MOVE.L	KONEYBG,A4
+	.OUTERLOOP:
+	MOVEQ	#0,D6		; RESET D6
+	MOVE.B	#bpl*hband/4-1,D6
+	ADD.W	#bpl*(hblit),A4	; POSITIONING
+	.INNERLOOP:
+	MOVE.L	#$FFFFFFFF,(A4)+	
+	DBRA	D6,.INNERLOOP
+	DBRA	D1,.OUTERLOOP
+	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
+	RTS
+
 __SCROLL_BG_LEFT:
 	MOVEM.L	D0-A6,-(SP)	; SAVE TO STACK
 	BTST.B	#6,DMACONR	; for compatibility
@@ -239,10 +258,10 @@ __SCROLL_BG_LEFT:
 	MOVE.W	#bpl-2,BLTAMOD	; BLTAMOD =0 perche` il rettangolo
 	MOVE.W	#bpl-2,BLTDMOD	; BLTDMOD 40-4=36 il rettangolo
 
-	MOVE.W	#(h<<6)+%000001,BLTSIZE	; BLTSIZE (via al blitter !)
+	MOVE.W	#(hblit<<6)+%000001,BLTSIZE	; BLTSIZE (via al blitter !)
 
 	MOVE.L	SCROLL_PLANE,A4
-	ADD.L	#bpl*h-2,A4
+	ADD.L	#bpl*hblit-2,A4
 	ROL.W	#4,D1
 	MOVE.B	SCROLL_SHIFT,D1
 	AND.B	#15,D1		; BETTER LIMIT...
@@ -255,7 +274,7 @@ __SCROLL_BG_LEFT:
 	MOVE.W	#0,BLTAMOD	; BLTAMOD =0 perche` il rettangolo
 	MOVE.W	#0,BLTDMOD	; BLTDMOD 40-4=36 il rettangolo
 
-	MOVE.W	#(h<<6)+%00010101,BLTSIZE	; BLTSIZE (via al blitter !)
+	MOVE.W	#(hblit<<6)+%00010101,BLTSIZE	; BLTSIZE (via al blitter !)
 
 	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
 	RTS
@@ -281,7 +300,7 @@ __SCROLL_BG_RIGHT:
 	MOVE.W	#0,BLTAMOD	; BLTAMOD =0 perche` il rettangolo
 	MOVE.W	#0,BLTDMOD	; BLTDMOD 40-4=36 il rettangolo
 
-	MOVE.W	#(h<<6)+%00010101,BLTSIZE	; BLTSIZE (via al blitter !)
+	MOVE.W	#(hblit<<6)+%00010101,BLTSIZE	; BLTSIZE (via al blitter !)
 
 	MOVE.L	SCROLL_PLANE,A4	; PATCH FIRST WORD COLUMN
 	bsr	WaitBlitter
@@ -302,7 +321,7 @@ __SCROLL_BG_RIGHT:
 	MOVE.W	D0,BLTBMOD
 	MOVE.W	D0,BLTDMOD
 
-	MOVE.W	#(h<<6)+%000001,BLTSIZE	; BLTSIZE (via al blitter !)
+	MOVE.W	#(hblit<<6)+%000001,BLTSIZE	; BLTSIZE (via al blitter !)
 
 	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
 	RTS
@@ -389,13 +408,14 @@ SPR_1_POS:	DC.B $83		; O
 SPR_2_POS:	DC.B $8C		; N
 SPR_3_POS:	DC.B $95		; E
 SPR_4_POS:	DC.B $9E		; Y
-		EVEN
+EVEN
+TEXTINDEX:	DC.W 0
 
 SCROLL_PLANE:	DC.L 0
 SCROLL_SHIFT:	DC.B 0
 		EVEN
 
-PALETTEBUFFERED:	;INCLUDE "BG_JPG_DITHER_PALETTE.s"
+PALETTEBUFFERED:			;INCLUDE "BG_JPG_DITHER_PALETTE.s"
 	DC.W $0180,$0000,$0182,$0334,$0184,$0445,$0186,$0556
 	DC.W $0188,$0667,$018A,$0333,$018C,$0667,$018E,$0777
 	DC.W $0190,$0888,$0192,$0888,$0194,$0999,$0196,$0AAA
@@ -406,10 +426,15 @@ PALETTEBUFFERED:	;INCLUDE "BG_JPG_DITHER_PALETTE.s"
 	;*******************************************************************************
 
 BG1:	DS.W h*bpls		; DEFINE AN EMPTY AREA FOR THE MARGIN WORD
-BG1_DATA:	;INCBIN "onePlane_10.raw"
-	INCBIN "BG_KONEY_DEMO_AMIGA_3.raw"
+BG1_DATA:	INCBIN "BG_KONEY_DEMO_AMIGA_3.raw"
 
 SPRITES:	INCLUDE "sprite_KONEY.s"
+
+FONT:	DC.L	0,0	; SPACE CHAR
+	;INCBIN	"cyberfont_8x752.raw",0
+TEXT:
+	DC.B " CIPPA LIPPA!"		; WIDTH OF 1 SCREEN OF TEXT
+	DC.B "! WARNING EPILEPSY DANGER ALERT!     "
 
 Copper:
 	DC.W $1FC,0	;Slow fetch mode, remove if AGA demo.
