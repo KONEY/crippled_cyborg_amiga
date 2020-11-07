@@ -17,7 +17,7 @@ bplsize=	bpl*h
 hband=	10
 hblit=	h-hband
 ;*************
-MODSTART_POS=0
+MODSTART_POS=1
 ;*************
 
 ;********** Demo **********	;Demo-specific non-startup code below.
@@ -43,7 +43,6 @@ Demo:	;a4=VBR, a6=Custom Registers Base addr
 	bsr.w	PokePtrs
 
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
-	BSR.W	__InitCopperPalette
 	BSR.W	__ADD_BLITTER_WORD
 	BSR.W	__CREATESCROLLSPACE
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
@@ -85,7 +84,7 @@ Demo:	;a4=VBR, a6=Custom Registers Base addr
 	sub.l	a1,a1
 	sub.l	a2,a2
 	moveq	#0,d0
-	MOVE.W	MODSTART_POS,P61_InitPos	; TRACK START OFFSET
+	MOVE.W	#MODSTART_POS,P61_InitPos	; TRACK START OFFSET
 	jsr	P61_Init
 	MOVEM.L (SP)+,D0-A6
 
@@ -117,18 +116,25 @@ MainLoop:
 	BSR.W	__POPULATETXTBUFFER
 	BSR.W	__SHIFTTEXT
 
+	;MOVE.B	#1,SCROLL_DIRECTION	; SHIFT RIGHT
 	;MOVE.L	BGPLANE0,SCROLL_PLANE
 	;MOVE.B	#2,SCROLL_SHIFT
-	;BSR.W	__SCROLL_BG_LEFT	; SHIFT LEFT
+	;BSR.W	__SCROLL_BG_PLANE
+
+	MOVE.B	#0,SCROLL_DIRECTION	; SHIFT LEFT
 	MOVE.L	BGPLANE1,SCROLL_PLANE
 	MOVE.B	AUDIOCHANLEVEL2,SCROLL_SHIFT
-	BSR.W	__SCROLL_BG_LEFT	; SHIFT LEFT
+	BSR.W	__SCROLL_BG_PLANE		; SHIFT !!
+
+	MOVE.B	#1,SCROLL_DIRECTION	; SHIFT RIGHT
 	MOVE.L	BGPLANE2,SCROLL_PLANE
 	MOVE.B	AUDIOCHANLEVEL3,SCROLL_SHIFT
-	BSR.W	__SCROLL_BG_RIGHT	; SHIFT LEFT
+	BSR.W	__SCROLL_BG_PLANE		; SHIFT !!
+
+	MOVE.B	#0,SCROLL_DIRECTION	; SHIFT LEFT
 	MOVE.L	BGPLANE3,SCROLL_PLANE
 	MOVE.B	AUDIOCHANLEVEL0,SCROLL_SHIFT
-	BSR.W	__SCROLL_BG_LEFT	; SHIFT LEFT
+	BSR.W	__SCROLL_BG_PLANE		; SHIFT !!
 
 	; ## LOGO ##
 	MOVE.B	SPR_0_POS,D0
@@ -201,17 +207,6 @@ VBint:				; Blank template VERTB interrupt
 	movem.l	(sp)+,d0/a6	; restore
 	rte
 
-__InitCopperPalette:
-	MOVEM.L	D0-A6,-(SP)	; SAVE TO STACK
-	LEA.L	PALETTEBUFFERED,A2
-	LEA.L	Palette,A3
-	MOVE.L	#15,D0
-	.FillLoop:
-	MOVE.L	(A2)+,(A3)+
-	DBRA	D0,.FillLoop
-	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
-	RTS
-
 __ADD_BLITTER_WORD:
 	MOVEM.L	D0-A6,-(SP)	; SAVE TO STACK
 	LEA	BG1_DATA,A0
@@ -246,6 +241,88 @@ __CREATESCROLLSPACE:
 	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
 	RTS
 
+__SCROLL_BG_PLANE:	
+	MOVEM.L	D0-A6,-(SP)	; SAVE TO STACK
+	BTST.B	#6,DMACONR	; for compatibility
+
+	MOVE.W	#%0000100111110000,D1
+
+	MOVE.B	SCROLL_DIRECTION,D5
+
+	CMP.B	#1,D5
+	BEQ.B	.mainBlit
+
+	; ## FOR LEFT ####
+	MOVE.L	SCROLL_PLANE,A4	; PATCH FIRST WORD COLUMN
+	bsr	WaitBlitter
+	MOVE.L	A4,BLTAPTH	; BLTAPT  (fisso alla figura sorgente)
+	ADD.L	#bpl-2,A4		; POSITION FOR DESC
+	MOVE.L	A4,BLTDPTH
+	MOVE.W	#$FFFF,BLTAFWM	; BLTAFWM lo spiegheremo dopo
+	MOVE.W	#$FFFF,BLTALWM	; BLTALWM lo spiegheremo dopo
+	MOVE.W	D1,BLTCON0	; BLTCON0 (usa A+D); con shift di un pixel
+	MOVE.W	#%0000000000000000,BLTCON1	; BLTCON1 BIT 12 DESC MODE
+	MOVE.W	#bpl-2,BLTAMOD	; BLTAMOD =0 perche` il rettangolo
+	MOVE.W	#bpl-2,BLTDMOD	; BLTDMOD 40-4=36 il rettangolo
+
+	MOVE.W	#(hblit<<6)+%000001,BLTSIZE	; BLTSIZE (via al blitter !)
+	; ## FOR LEFT ####
+
+	; ## MAIN BLIT ####
+	.mainBlit:
+	MOVE.L	SCROLL_PLANE,A4
+	ROL.W	#4,D1
+	MOVE.B	SCROLL_SHIFT,D1
+	ROR.W	#4,D1
+	bsr	WaitBlitter
+	MOVE.W	#$FFFF,BLTAFWM	; BLTAFWM lo spiegheremo dopo
+	MOVE.W	#$FFFF,BLTALWM	; BLTALWM lo spiegheremo dopo
+	MOVE.W	D1,BLTCON0	; BLTCON0 (usa A+D); con shift di un pixel
+	MOVE.W	#%0000000000000000,BLTCON1	; BLTCON1 BIT 12 DESC MODE
+	MOVE.W	#0,BLTAMOD	; BLTAMOD =0 perche` il rettangolo
+	MOVE.W	#0,BLTDMOD	; BLTDMOD 40-4=36 il rettangolo
+
+	CMP.B	#1,D5
+	BEQ.B	.goBlitter		; FOR LEFT
+	ADD.L	#bpl*hblit-2,A4
+	MOVE.W	#%0000000000000010,BLTCON1	; BLTCON1 BIT 12 DESC MODE
+
+	.goBlitter:
+	MOVE.L	A4,BLTAPTH	; BLTAPT  (fisso alla figura sorgente)
+	MOVE.L	A4,BLTDPTH
+	MOVE.W	#(hblit<<6)+%00010101,BLTSIZE	; BLTSIZE (via al blitter !)
+
+	; ## MAIN BLIT ####
+
+	CMP.B	#1,D5
+	BNE.B	.skip
+	
+	; ## FOR RIGHT ####
+	MOVE.L	SCROLL_PLANE,A4	; PATCH FIRST WORD COLUMN
+	bsr	WaitBlitter
+	MOVEQ	#bpl-2,D0
+	MOVE.L	A4,BLTAPTH	; BLTAPT  (fisso alla figura sorgente)
+	MOVE.L	A4,BLTDPTH
+	ADD.L	D0,A4
+	MOVE.L	A4,BLTBPTH
+	MOVE.W	#%0000110111100100,BLTCON0	; d = ac+b!c = abc+a!bc+ab!c+!ab!c = %11100100 = $e4
+	MOVE.W	#%0000000000000000,BLTCON1	; BLTCON1 BIT 12 DESC MODE
+	MOVE.B	SCROLL_SHIFT,D1
+	MOVE.W	#$FFFF,D2
+	LSR.W	D1,D2
+
+	MOVE.W	D2,BLTCDAT
+	MOVE.W	D0,BLTAMOD
+	MOVE.W	D0,BLTBMOD
+	MOVE.W	D0,BLTDMOD
+
+	MOVE.W	#(hblit<<6)+%000001,BLTSIZE	; BLTSIZE (via al blitter !)
+	.skip:
+	; ## FOR RIGHT ####
+
+	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
+	RTS
+
 __SCROLL_BG_LEFT:
 	MOVEM.L	D0-A6,-(SP)	; SAVE TO STACK
 	BTST.B	#6,DMACONR	; for compatibility
@@ -270,7 +347,6 @@ __SCROLL_BG_LEFT:
 	ADD.L	#bpl*hblit-2,A4
 	ROL.W	#4,D1
 	MOVE.B	SCROLL_SHIFT,D1
-	AND.B	#15,D1		; BETTER LIMIT...
 	ROR.W	#4,D1
 	bsr	WaitBlitter
 	MOVE.L	A4,BLTAPTH	; BLTAPT  (fisso alla figura sorgente)
@@ -294,7 +370,6 @@ __SCROLL_BG_RIGHT:
 	MOVE.L	SCROLL_PLANE,A4
 	ROL.W	#4,D1
 	MOVE.B	SCROLL_SHIFT,D1
-	AND.B	#15,D1		; BETTER LIMIT...
 	ROR.W	#4,D1
 	bsr	WaitBlitter
 	MOVE.L	A4,BLTAPTH	; BLTAPT  (fisso alla figura sorgente)
@@ -318,7 +393,6 @@ __SCROLL_BG_RIGHT:
 	MOVE.W	#%0000110111100100,BLTCON0	; d = ac+b!c = abc+a!bc+ab!c+!ab!c = %11100100 = $e4
 	MOVE.W	#%0000000000000000,BLTCON1	; BLTCON1 BIT 12 DESC MODE
 	MOVE.B	SCROLL_SHIFT,D1
-	AND.B	#15,D1		; BETTER LIMIT...
 	MOVE.W	#$FFFF,D2
 	LSR.W	D1,D2
 
@@ -478,24 +552,22 @@ SPR_2_POS:	DC.B $8C		; N
 SPR_3_POS:	DC.B $95		; E
 SPR_4_POS:	DC.B $9E		; Y
 SCROLL_SHIFT:	DC.B 0
+SCROLL_PLANE:	DC.L 0
+SCROLL_DIRECTION:	DC.B 0		; 0=LEFT 1=RIGHT
+		EVEN
 TEXTINDEX:	DC.W 0
 FRAMESINDEX:	DC.W 4
-SCROLL_PLANE:	DC.L 0
-
-PALETTEBUFFERED:
-	DC.W $0180,$0000,$0182,$0334,$0184,$0445,$0186,$0556
-	DC.W $0188,$0667,$018A,$0333,$018C,$0667,$018E,$0777
-	DC.W $0190,$0888,$0192,$0888,$0194,$0999,$0196,$0AAA
-	DC.W $0198,$0BBB,$019A,$0CCC,$019C,$0DDD,$019E,$0FFF
 
 	;*******************************************************************************
 	SECTION	ChipData,DATA_C	;declared data that must be in chipmem
 	;*******************************************************************************
 
-BG1:	DS.W h*bpls		; DEFINE AN EMPTY AREA FOR THE MARGIN WORD
-BG1_DATA:	INCBIN "BG_KONEY_DEMO_AMIGA_3.raw"
+BG1:		DS.W h*bpls		; DEFINE AN EMPTY AREA FOR THE MARGIN WORD
+BG1_DATA:		INCBIN "BG_KONEY_DEMO_AMIGA_3.raw"
 
-SPRITES:	INCLUDE "sprite_KONEY.s"
+SPRITES:		INCLUDE "sprite_KONEY.s"
+
+Module1:		INCBIN "CrippledCyborg.P61"	; code $9305
 
 FONT:	DC.L 0,0	; SPACE CHAR
 	INCBIN "digital_font.raw",0
@@ -519,11 +591,11 @@ Copper:
 	
 	DC.W $102,0	;SCROLL REGISTER (AND PLAYFIELD PRI)
 
-Palette:	;Some kind of palette (3 bpls=8 colors)
-	DC.W $0180,0,$0182,0,$0184,0,$0186,0
-	DC.W $0188,0,$018A,0,$018C,0,$018E,0
-	DC.W $0190,0,$0192,0,$0194,0,$0196,0
-	DC.W $0198,0,$019A,0,$019C,0,$019e,0
+Palette:
+	DC.W $0180,$0000,$0182,$0334,$0184,$0445,$0186,$0556
+	DC.W $0188,$0667,$018A,$0333,$018C,$0667,$018E,$0777
+	DC.W $0190,$0888,$0192,$0888,$0194,$0999,$0196,$0AAA
+	DC.W $0198,$0BBB,$019A,$0CCC,$019C,$0DDD,$019E,$0FFF
 
 BplPtrs:
 	DC.W $E0,0
@@ -582,38 +654,36 @@ COPPERWAITS:
 	DC.W $0188,$0DDD	; BG COLOR
 	DC.W $0198,$0000	; TXT COLOR
 	
-	DC.W $2401,$FF00	; horizontal position masked off
-	DC.W $0198,$0222	; TXT COLOR
+	;DC.W $2401,$FF00	; horizontal position masked off
+	;DC.W $0198,$0222	; TXT COLOR
 	
 	DC.W $2501,$FF00	; horizontal position masked off
 	DC.W $0188,$0AAA	; BG COLOR
-	DC.W $0198,$0444	; TXT COLOR
+	;DC.W $0198,$0444	; TXT COLOR
 
-	DC.W $2601,$FF00	; horizontal position masked off
-	DC.W $0198,$0333	; TXT COLOR
+	;DC.W $2601,$FF00	; horizontal position masked off
+	;DC.W $0198,$0333	; TXT COLOR
 
 	DC.W $2701,$FF00	; horizontal position masked off
 	DC.W $0188,$0888	; BG COLOR
-	DC.W $0198,$0666	; TXT COLOR
+	;DC.W $0198,$0666	; TXT COLOR
 
-	DC.W $2801,$FF00	; horizontal position masked off
-	DC.W $0198,$0999	; TXT COLOR
+	;DC.W $2801,$FF00	; horizontal position masked off
+	;DC.W $0198,$0999	; TXT COLOR
 
 	DC.W $2901,$FF00	; horizontal position masked off
 	DC.W $0188,$0555	; BG COLOR
-	DC.W $0198,$0AAA	; TXT COLOR
+	;DC.W $0198,$0AAA	; TXT COLOR
 
 	DC.W $2A01,$FF00	; horizontal position masked off
-	DC.W $0188,$0222	; BG COLOR
-	DC.W $0198,$0EEE	; TXT COLOR
+	DC.W $0188,$0333	; BG COLOR
+	;DC.W $0198,$0EEE	; TXT COLOR
 
 	DC.W $2B01,$FF00	; RESTORE BLACK
 	DC.W $0188,$0000
 
 	DC.W $FFFF,$FFFE	;magic value to end copperlist
 _Copper:
-
-Module1:	INCBIN	"CrippledCyborg.P61"	; code $9305
 
 ;*******************************************************************************
 	SECTION ChipBuffers,BSS_C	;BSS doesn't count toward exe size
