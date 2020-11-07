@@ -17,6 +17,7 @@ bplsize=	bpl*h
 hband=	10
 hblit=	h-hband
 ;*************
+MODSTART_POS=0
 ;*************
 
 ;********** Demo **********	;Demo-specific non-startup code below.
@@ -84,7 +85,7 @@ Demo:	;a4=VBR, a6=Custom Registers Base addr
 	sub.l	a1,a1
 	sub.l	a2,a2
 	moveq	#0,d0
-	MOVE.W	#6,P61_InitPos	; TRACK START OFFSET
+	MOVE.W	MODSTART_POS,P61_InitPos	; TRACK START OFFSET
 	jsr	P61_Init
 	MOVEM.L (SP)+,D0-A6
 
@@ -112,6 +113,9 @@ MainLoop:
 	MOVE.L	KONEYBG,DrawBuffer
 
 	; do stuff here :)
+
+	BSR.W	__POPULATETXTBUFFER
+	BSR.W	__SHIFTTEXT
 
 	;MOVE.L	BGPLANE0,SCROLL_PLANE
 	;MOVE.B	#2,SCROLL_SHIFT
@@ -234,7 +238,7 @@ __CREATESCROLLSPACE:
 	MOVE.B	#bpl*hband/4-1,D6
 	ADD.W	#bpl*(hblit),A4	; POSITIONING
 	.INNERLOOP:
-	MOVE.L	#$FFFFFFFF,(A4)+	
+	MOVE.L	#$00000000,(A4)+	
 	DBRA	D6,.INNERLOOP
 	DBRA	D1,.OUTERLOOP
 	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
@@ -390,6 +394,68 @@ __SET_PT_VISUALS:
 	endc
 	; MOD VISUALIZERS *****
 
+__POPULATETXTBUFFER:
+	MOVEM.L	D0-A6,-(SP)	; SAVE TO STACK
+	MOVE.W	FRAMESINDEX,D7
+	CMP.W	#4,D7
+	BNE.W	.SKIP
+	MOVE.L	BGPLANE3,A4
+	LEA	FONT,A5
+	LEA	TEXT,A6
+	ADD.W	#bpl*(hblit),A4	; POSITIONING
+	ADD.W	TEXTINDEX,A6
+	CMP.L	#_TEXT-1,A6	; Siamo arrivati all'ultima word della TAB?
+	BNE.S	.PROCEED
+	MOVE.W	#0,TEXTINDEX	; Riparti a puntare dalla prima word
+	LEA	TEXT,A6		; FIX FOR GLITCH (I KNOW IT'S FUN... :)
+	.PROCEED:
+	MOVE.B	(A6),D2		; Prossimo carattere in d2
+	SUB.B	#$20,D2		; TOGLI 32 AL VALORE ASCII DEL CARATTERE, IN
+	MULU.W	#8,D2		; MOLTIPLICA PER 8 IL NUMERO PRECEDENTE,
+	ADD.W	D2,A5
+	MOVEQ	#0,D6		; RESET D6
+	MOVE.B	#8-1,D6
+	.LOOP:
+	ADD.W	#bpl-2,A4		; POSITIONING
+	MOVE.B	(A5)+,(A4)+
+	MOVE.B	#%00000000,(A4)+	; WRAPS MORE NICELY?
+	DBRA	D6,.LOOP
+	.SKIP:
+	SUB.W	#1,D7
+	CMP.W	#0,D7
+	BEQ.W	.RESET
+	MOVE.W	D7,FRAMESINDEX
+	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
+	RTS
+	.RESET:
+	ADD.W	#1,TEXTINDEX
+	MOVE.W	#4,D7
+	MOVE.W	D7,FRAMESINDEX	; OTTIMIZZABILE
+	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
+	RTS
+
+__SHIFTTEXT:
+	MOVEM.L	D0-A6,-(SP)	; SAVE TO STACK
+	BTST.B	#6,DMACONR	; for compatibility
+	bsr	WaitBlitter
+
+	MOVE.L	BGPLANE3,A4
+	ADD.W	#bpl*h-2,A4	; POSITIONING
+	MOVE.W	#$FFFF,BLTAFWM	; BLTAFWM lo spiegheremo dopo
+	MOVE.W	#$FFFF,BLTALWM	; BLTALWM lo spiegheremo dopo
+	MOVE.W	#%0010100111110000,BLTCON0	; BLTCON0 (usa A+D); con shift di un pixel
+	MOVE.W	#%0000000000000010,BLTCON1	; BLTCON1 BIT 12 DESC MODE
+	MOVE.W	#0,BLTAMOD	; BLTAMOD =0 perche` il rettangolo
+	MOVE.W	#0,BLTDMOD	; BLTDMOD 40-4=36 il rettangolo
+
+	MOVE.L	A4,BLTAPTH	; BLTAPT  (fisso alla figura sorgente)
+	MOVE.L	A4,BLTDPTH
+
+	MOVE.W	#(hband-1)*64+w/16,BLTSIZE	; BLTSIZE (via al blitter !)
+
+	MOVEM.L	(SP)+,D0-A6	; FETCH FROM STACK
+	RTS
+
 ;********** Fastmem Data **********
 DrawBuffer:	DC.L SCREEN2	; pointers to buffers to be swapped
 ViewBuffer:	DC.L SCREEN1	;
@@ -408,9 +474,8 @@ SPR_1_POS:	DC.B $83		; O
 SPR_2_POS:	DC.B $8C		; N
 SPR_3_POS:	DC.B $95		; E
 SPR_4_POS:	DC.B $9E		; Y
-EVEN
 TEXTINDEX:	DC.W 0
-
+FRAMESINDEX:	DC.W 4
 SCROLL_PLANE:	DC.L 0
 SCROLL_SHIFT:	DC.B 0
 		EVEN
@@ -430,11 +495,15 @@ BG1_DATA:	INCBIN "BG_KONEY_DEMO_AMIGA_3.raw"
 
 SPRITES:	INCLUDE "sprite_KONEY.s"
 
-FONT:	DC.L	0,0	; SPACE CHAR
-	;INCBIN	"cyberfont_8x752.raw",0
+FONT:	DC.L 0,0	; SPACE CHAR
+	;INCBIN "scummfnt_8x752.raw"
+	INCBIN "digital_font.raw",0
+	EVEN
 TEXT:
-	DC.B " CIPPA LIPPA!"		; WIDTH OF 1 SCREEN OF TEXT
-	DC.B "! WARNING EPILEPSY DANGER ALERT!     "
+	DC.B "CIPPA LIPPA! NEED TO FIGURE OUT WHAT TO WRITE EXACTLY BUT NOTHING IMPORTANT...   "
+	;DC.B "WARNING EPILEPSY DANGER ALERT! MORE TEXT TO COME AS SOON AS EVERYTHING STOPS CRASHING!!    "
+	EVEN
+_TEXT:
 
 Copper:
 	DC.W $1FC,0	;Slow fetch mode, remove if AGA demo.
@@ -505,10 +574,15 @@ COPPERWAITS:
 
 	DC.W $FFDF,$FFFE	; allow VPOS>$ff
 
-	;DC.W $0807,$FFFE
-	;DC.W $0180,$0FFF
-	;DC.W $0907,$FFFE
-	;DC.W $0180,$0000
+	;DC.W $2201,$FF00	; horizontal position masked off
+
+	DC.W $223F,$FFFE	; SCROLL AREA WHITE
+	DC.W $0180,$0FFF
+
+	DC.W $2AF1,$FFFE	; RESTORE BLACK
+	DC.W $0180,$0000
+
+
 	;DC.W $0182,$0333	; SCROLLING TEXT WHITE OFF
 
 	DC.W $FFFF,$FFFE	;magic value to end copperlist
