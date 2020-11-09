@@ -43,8 +43,8 @@ Demo:	;a4=VBR, a6=Custom Registers Base addr
 	bsr.w	PokePtrs
 
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
-	BSR.W	__ADD_BLITTER_WORD
-	BSR.W	__CREATESCROLLSPACE
+	JSR	__ADD_BLITTER_WORD
+	JSR	__CREATESCROLLSPACE
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
 
 	; #### Point LOGO sprites
@@ -80,12 +80,13 @@ Demo:	;a4=VBR, a6=Custom Registers Base addr
 
 	;---  Call P61_Init  ---
 	MOVEM.L	D0-A6,-(SP)
-	lea	Module1,a0
-	sub.l	a1,a1
-	sub.l	a2,a2
-	moveq	#0,d0
+	LEA	Module,A0
+	SUB.L	A1,A1
+	SUB.L	A2,A2
+	MOVEQ	#0,D0
 	MOVE.W	#MODSTART_POS,P61_InitPos	; TRACK START OFFSET
-	jsr	P61_Init
+	MOVE.W	#MODSTART_POS,P61_LAST_POS	; SYNC
+	JSR	P61_Init
 	MOVEM.L (SP)+,D0-A6
 
 	MOVE.L	#Copper,$80(a6)
@@ -115,33 +116,25 @@ MainLoop:
 	;CLR.W	$100			; DEBUG | w 0 100 2
 	SONG_POSITION_EVENTS:
 	;* FOR TIMED EVENTS ON SELECTED FRAME ****
-	MOVE.W	P61_Pos,D5
-	CMP.W	P61_LAST_POS,D5
-	BNE.S	.dontReset
-	MOVE.W	#0,P61_FRAMECOUNT
-	ADD.W	#1,P61_LAST_POS
-	.dontReset:
-	MOVE.W	P61_FRAMECOUNT,D4
-	ADD.W	#1,D4
-	MOVE.W	D4,P61_FRAMECOUNT
+	MOVE.W	P61_LAST_POS,D5
 
 	; THIS PART IS REPEATED FOR EVERY POSITION WE WANT TO TRIG SOMETHING
 	CMPI.W	#0,D5			; SONG POSITION
 	BNE.S	.doNothing0
 	; ## FIRST BLOCK - INTRO - NOSCROLLTXT
-	MOVE.B	#0,SCROLL_DIRECTION	; SHIFT RIGHT
+	MOVE.B	#0,SCROLL_DIRECTION
 	MOVE.L	BGPLANE0,SCROLL_PLANE
 	MOVE.B	#2,SCROLL_SHIFT
 	BSR.W	__SCROLL_BG_PLANE		; SHIFT !!
-	MOVE.B	#0,SCROLL_DIRECTION	; SHIFT LEFT
+	MOVE.B	#0,SCROLL_DIRECTION
 	MOVE.L	BGPLANE1,SCROLL_PLANE
 	MOVE.B	#4,SCROLL_SHIFT
 	BSR.W	__SCROLL_BG_PLANE		; SHIFT !!
-	MOVE.B	#0,SCROLL_DIRECTION	; SHIFT RIGHT
+	MOVE.B	#0,SCROLL_DIRECTION
 	MOVE.L	BGPLANE2,SCROLL_PLANE
 	MOVE.B	#6,SCROLL_SHIFT
 	BSR.W	__SCROLL_BG_PLANE		; SHIFT !!
-	MOVE.B	#0,SCROLL_DIRECTION	; SHIFT LEFT
+	MOVE.B	#0,SCROLL_DIRECTION
 	MOVE.L	BGPLANE3,SCROLL_PLANE
 	MOVE.B	#8,SCROLL_SHIFT
 	BSR.W	__SCROLL_BG_PLANE		; SHIFT !!
@@ -156,42 +149,64 @@ MainLoop:
 	BSR.W	__POPULATETXTBUFFER
 	BSR.W	__SHIFTTEXT
 	
-	MOVE.B	#0,SCROLL_DIRECTION	; SHIFT LEFT
+	MOVE.B	#0,SCROLL_DIRECTION
 	MOVE.L	BGPLANE1,SCROLL_PLANE
-	MOVE.B	AUDIOCHANLEVEL2,SCROLL_SHIFT
+	MOVE.B	AUDIOCHLEVEL2,SCROLL_SHIFT
 	BSR.W	__SCROLL_BG_PLANE		; SHIFT !!
 
-	MOVE.B	SCOLL_DIR_3,SCROLL_DIRECTION	; SHIFT LEFT
+	MOVE.B	SCOLL_DIR_3,SCROLL_DIRECTION
 	MOVE.L	BGPLANE2,SCROLL_PLANE
-	MOVE.B	AUDIOCHANLEVEL3,SCROLL_SHIFT
+	MOVE.B	AUDIOCHLEVEL3,SCROLL_SHIFT
 	BSR.W	__SCROLL_BG_PLANE		; SHIFT !!
 
-	MOVE.B	#1,SCROLL_DIRECTION	; SHIFT LEFT
+	MOVE.B	#1,SCROLL_DIRECTION
 	MOVE.L	BGPLANE3,SCROLL_PLANE
-	MOVE.B	AUDIOCHANLEVEL0,SCROLL_SHIFT
+	MOVE.B	AUDIOCHLEVEL0NRM,SCROLL_SHIFT
 	BSR.W	__SCROLL_BG_PLANE		; SHIFT !!
 	.doNothing1:
 	; THIS PART IS REPEATED FOR EVERY POSITION WE WANT TO TRIG SOMETHING
 
+	; THIS PART IS REPEATED FOR EVERY POSITION WE WANT TO TRIG SOMETHING
+	CMPI.W	#16,D5			; SONG POSITION
+	BLO.S	.doNothing16
+
+	; GLITCH BY MESSING WITH BPLxMOD
+	MOVE.W	AUDIOCHLEVEL0,BPL1MOD
+	ADDQ.W	#2,BPL1MOD		; TO END IN INITIAL VALUE
+	;MOVE.W	AUDIOCHLEVEL1,BPL2MOD
+	;ADDQ.W	#2,BPL2MOD
+	.doNothing16:
+	; THIS PART IS REPEATED FOR EVERY POSITION WE WANT TO TRIG SOMETHING
+
 	; ## LOGO ##############
 	MOVE.B	SPR_0_POS,D0
-	SUB.B	AUDIOCHANLEVEL1,D0
-	SUB.B	AUDIOCHANLEVEL1,D0
+	SUB.B	AUDIOCHLEVEL1,D0
+	SUB.B	AUDIOCHLEVEL1,D0
 	MOVE.B	D0,SPRT_K_POS
 
 	MOVE.B	SPR_1_POS,D0
-	SUB.B	AUDIOCHANLEVEL1,D0
+	SUB.B	AUDIOCHLEVEL1,D0
 	MOVE.B	D0,SPRT_O_POS
 
 	MOVE.B	SPR_3_POS,D0
-	ADD.B	AUDIOCHANLEVEL1,D0
+	ADD.B	AUDIOCHLEVEL1,D0
 	MOVE.B	D0,SPRT_E_POS
 
 	MOVE.B	SPR_4_POS,D0
-	ADD.B	AUDIOCHANLEVEL1,D0
-	ADD.B	AUDIOCHANLEVEL1,D0
+	ADD.B	AUDIOCHLEVEL1,D0
+	ADD.B	AUDIOCHLEVEL1,D0
 	MOVE.B	D0,SPRT_Y_POS
 	; ## LOGO ##############
+
+	; ## SONG POS RESETS ##
+	MOVE.W	P61_Pos,D6
+	CMP.W	P61_LAST_POS,D6
+	BNE.S	.dontReset
+	MOVEM.W	#0,P61_FRAMECOUNT
+	ADD.W	#1,P61_LAST_POS
+	.dontReset:
+	ADDQ.W	#1,P61_FRAMECOUNT
+	; ## SONG POS RESETS ##
 
 	;*--- main loop end ---*
 
@@ -370,24 +385,34 @@ __SET_PT_VISUALS:
 	LEA	P61_visuctr0(PC),A0 ; which channel? 0-3
 	MOVEQ	#45,D0		; maxvalue
 	SUB.W	(A0),D0		; -#frames/irqs since instrument trigger
-	BPL.S	.ok0		; below minvalue?
+	BPL.S	.ok5		; below minvalue?
 	MOVEQ	#0,D0		; then set to minvalue
-	.ok0:
+	.ok5:
 	CMP.W	#16,D0
 	BLO.W	.keepValue
 	MOVE.W	#15,D0
 	.keepValue:	
-	MOVE.B	D0,AUDIOCHANLEVEL0	; RESET
+	MOVE.B	D0,AUDIOCHLEVEL0NRM
+	_ok5:
+
+	; GLITCH
+	LEA	P61_visuctr0(PC),A0 ; which channel? 0-3
+	MOVEQ	#32,D0		; maxvalue
+	SUB.W	(A0),D0		; -#frames/irqs since instrument trigger
+	BPL.S	.ok0		; below minvalue?
+	MOVEQ	#0,D0		; then set to minvalue
+	.ok0:
+	MOVE.B	D0,AUDIOCHLEVEL0	; RESET
 	_ok0:
 
 	; KICK
-	lea	P61_visuctr1(PC),a0 ; which channel? 0-3
-	moveq	#8,d0		; maxvalue
-	sub.w	(a0),d0		; -#frames/irqs since instrument trigger
-	bpl.s	.ok1		; below minvalue?
-	moveq	#0,d0		; then set to minvalue
+	LEA	P61_visuctr1(PC),a0 ; which channel? 0-3
+	MOVEQ	#8,d0		; maxvalue
+	SUB.W	(a0),d0		; -#frames/irqs since instrument trigger
+	BPL.S	.ok1		; below minvalue?
+	MOVEQ	#0,d0		; then set to minvalue
 	.ok1:
-	MOVE.B	D0,AUDIOCHANLEVEL1	; RESET
+	MOVE.B	D0,AUDIOCHLEVEL1	; RESET
 	MULU.W	#$2,D0		; start from a darker shade
 	MOVE.L	D0,D3
 	ROL.L	#$4,D3		; expand bits to green
@@ -400,13 +425,13 @@ __SET_PT_VISUALS:
 	_ok1:
 
 	; BASS
-	lea	P61_visuctr2(PC),a0 ; which channel? 0-3
-	moveq	#15,d0		; maxvalue
-	sub.w	(a0),d0		; -#frames/irqs since instrument trigger
-	bpl.s	.ok2		; below minvalue?
-	moveq	#0,d0		; then set to minvalue
+	LEA	P61_visuctr2(PC),a0 ; which channel? 0-3
+	MOVEQ	#15,d0		; maxvalue
+	SUB.W	(a0),d0		; -#frames/irqs since instrument trigger
+	BPL.S	.ok2		; below minvalue?
+	MOVEQ	#0,d0		; then set to minvalue
 	.ok2:
-	MOVE.B	D0,AUDIOCHANLEVEL2	; RESET
+	MOVE.B	D0,AUDIOCHLEVEL2	; RESET
 	_ok2:
 
 	; CYBORG
@@ -419,7 +444,7 @@ __SET_PT_VISUALS:
 	NOT	D1
 	MOVE.B	D1,SCOLL_DIR_3
 	.ok3:
-	MOVE.B	D0,AUDIOCHANLEVEL3	; RESET
+	MOVE.B	D0,AUDIOCHLEVEL3	; RESET
 	_ok3:
 
 	MOVEM.L (SP)+,D0-A6
@@ -495,10 +520,11 @@ __SHIFTTEXT:
 DrawBuffer:	DC.L SCREEN2	; pointers to buffers to be swapped
 ViewBuffer:	DC.L SCREEN1	;
 
-AUDIOCHANLEVEL0:	DC.W 0
-AUDIOCHANLEVEL1:	DC.W 0
-AUDIOCHANLEVEL2:	DC.W 0
-AUDIOCHANLEVEL3:	DC.W 0
+AUDIOCHLEVEL0NRM:	DC.W 0
+AUDIOCHLEVEL0:	DC.W 0
+AUDIOCHLEVEL1:	DC.W 0
+AUDIOCHLEVEL2:	DC.W 0
+AUDIOCHLEVEL3:	DC.W 0
 P61_LAST_POS:	DC.W 0
 P61_FRAMECOUNT:	DC.W 0
 KONEYBG:		DC.L BG1		; INIT BG
@@ -528,35 +554,35 @@ BG1_DATA:		INCBIN "BG_KONEY_DEMO_AMIGA_3.raw"
 
 SPRITES:		INCLUDE "sprite_KONEY.s"
 
-Module1:		INCBIN "CrippledCyborgV3.P61"; code $9305
+Module:		INCBIN "CrippledCyborgV3.P61"; code $9305
 
-FONT:	DC.L 0,0	; SPACE CHAR
-	INCBIN "digital_font.raw",0
-	EVEN
-TEXT:
-	DC.B "CIPPA LIPPA! NEED TO FIGURE OUT WHAT TO WRITE EXACTLY BUT NOTHING IMPORTANT...   "
+FONT:		DC.L 0,0	; SPACE CHAR
+		INCBIN "digital_font.raw",0
+		EVEN
+
+TEXT:	DC.B "CIPPA LIPPA! NEED TO FIGURE OUT WHAT TO WRITE EXACTLY BUT NOTHING IMPORTANT...   "
 	DC.B "WARNING EPILEPSY DANGER ALERT! MORE TEXT TO COME AS SOON AS EVERYTHING STOPS CRASHING!!    "
 	EVEN
 _TEXT:
 
 Copper:
-	DC.W $1FC,0	;Slow fetch mode, remove if AGA demo.
-	DC.W $8E,$2C81	;238h display window top, left | DIWSTRT - 11.393
-	DC.W $90,$2CC1	;and bottom, right.	| DIWSTOP - 11.457
-	DC.W $92,$38	;Standard bitplane dma fetch start
-	DC.W $94,$D0	;and stop for standard screen.
+	DC.W $1FC,0	; Slow fetch mode, remove if AGA demo.
+	DC.W $8E,$2C81	; 238h display window top, left | DIWSTRT - 11.393
+	DC.W $90,$2CC1	; and bottom, right.	| DIWSTOP - 11.457
+	DC.W $92,$38	; Standard bitplane dma fetch start
+	DC.W $94,$D0	; and stop for standard screen.
 
-	DC.W $106,$0C00	;(AGA compat. if any Dual Playf. mode)
+	DC.W $106,$0C00	; (AGA compat. if any Dual Playf. mode)
 	
-	DC.W $108
-	COPPERMOD1:
-	DC.W 2		;bwid-bpl	;modulos
+	DC.W $108	; BPL1MOD	 Bitplane modulo (odd planes)
+	BPL1MOD:
+	DC.W 2		; bwid-bpl	;modulos
 	
-	DC.W $10A
-	COPPERMOD2:
-	DC.W 2		;bwid-bpl	;RISULTATO = 80 ?
+	DC.W $10A	; BPL2MOD Bitplane modulo (even planes)
+	BPL2MOD:
+	DC.W 2		; bwid-bpl	;RISULTATO = 80 ?
 	
-	DC.W $102,0	;SCROLL REGISTER (AND PLAYFIELD PRI)
+	DC.W $102,0	; SCROLL REGISTER (AND PLAYFIELD PRI)
 
 	Palette:
 	DC.W $0180,$0000,$0182,$0334,$0184,$0445,$0186,$0556
@@ -650,6 +676,7 @@ COPPERWAITS:
 	DC.W $0188,$0000
 
 	DC.W $FFFF,$FFFE	;magic value to end copperlist
+
 _Copper:
 
 ;*******************************************************************************
