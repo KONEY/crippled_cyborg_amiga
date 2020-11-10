@@ -6,27 +6,26 @@
 	INCLUDE	"PT12_OPTIONS.i"
 	INCLUDE	"P6112-Play-stripped.i"
 ;********** Constants **********
-w=	336		;screen width, height, depth
-h=	256
-bpls=	4		;handy values:
-bpl=	w/16*2		;byte-width of 1 bitplane line (40)
-bwid=	bpls*bpl		;byte-width of 1 pixel line (all bpls)
-blitsize=	h*64+w/16	;
-blitsizeF=%000000000000010101
-bplsize=	bpl*h
-hband=	10
-hblit=	h-hband
+w=	336		; screen width
+h=	256		; screen height
+bpls=	4		; depth
+bpl=	w/16*2		; byte-width of 1 bitplane line (40bytes)
+bwid=	bpls*bpl		; byte-width of 1 pixel line (all bpls)
+blitsize=	h*64+w/16	; size of blitter operation
+blitsizeF=%000000000000010101	; size of FULL blitter operation
+bplsize=	bpl*h		; size of 1 bitplane screen
+hband=	10		; lines reserved for textscroller
+hblit=	h-hband		; size of blitter op without textscroller
 ;*************
-MODSTART_POS=1
+MODSTART_POS=1		; start music at position
 ;*************
 
 ;********** Demo **********	;Demo-specific non-startup code below.
-Demo:	;a4=VBR, a6=Custom Registers Base addr
+Demo:				;a4=VBR, a6=Custom Registers Base addr
 	;*--- init ---*
 	move.l	#VBint,$6c(a4)
 	move.w	#%1110000000100000,INTENA
 	;** SOMETHING INSIDE HERE IS NEEDED TO MAKE MOD PLAY! **
-	;move.w	#%1110000000000000,INTENA	; Master and lev6	; NO COPPER-IRQ!
 
 	move.w	#%1000001111100000,DMACON	; BIT10=BLIT NASTY
 	;*--- clear screens ---*
@@ -77,13 +76,13 @@ Demo:	;a4=VBR, a6=Custom Registers Base addr
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
+	; #### Point LOGO sprites
 
 	;---  Call P61_Init  ---
 	MOVEM.L	D0-A6,-(SP)
 	LEA	Module,A0
 	SUB.L	A1,A1
 	SUB.L	A2,A2
-	MOVEQ	#0,D0
 	MOVE.W	#MODSTART_POS,P61_InitPos	; TRACK START OFFSET
 	MOVE.W	#MODSTART_POS,P61_LAST_POS	; SYNC
 	JSR	P61_Init
@@ -167,9 +166,8 @@ MainLoop:
 	; THIS PART IS REPEATED FOR EVERY POSITION WE WANT TO TRIG SOMETHING
 
 	; THIS PART IS REPEATED FOR EVERY POSITION WE WANT TO TRIG SOMETHING
-	CMPI.W	#16,D5			; SONG POSITION
+	CMPI.W	#15,D5			; SONG POSITION
 	BLO.S	.doNothing16
-
 	; GLITCH BY MESSING WITH BPLxMOD
 	MOVE.W	AUDIOCHLEVEL0,BPL1MOD
 	ADDQ.W	#2,BPL1MOD		; TO END IN INITIAL VALUE
@@ -381,6 +379,18 @@ __SET_PT_VISUALS:
 	ifne visuctrs
 	MOVEM.L D0-A6,-(SP)
 
+	; ## COMMANDS 80x TRIGGERED EVENTS ##
+	MOVE.W	P61_E8,D2
+	CMPI.W	#3,D2		; 803 - INVERT DIRECTION
+	BNE.S	.keepDir3
+	MOVE.B	SCOLL_DIR_3,D1
+	NOT	D1
+	MOVE.B	D1,SCOLL_DIR_3
+	MOVE.W	#0,P61_E8	; RESET FX
+	;CLR.W	$100		; DEBUG | w 0 100 2
+	.keepDir3:
+	; ## COMMANDS 80x TRIGGERED EVENTS ##
+
 	; GLITCH
 	LEA	P61_visuctr0(PC),A0 ; which channel? 0-3
 	MOVEQ	#45,D0		; maxvalue
@@ -388,9 +398,9 @@ __SET_PT_VISUALS:
 	BPL.S	.ok5		; below minvalue?
 	MOVEQ	#0,D0		; then set to minvalue
 	.ok5:
-	CMP.W	#16,D0
-	BLO.W	.keepValue
-	MOVE.W	#15,D0
+	CMPI.W	#16,D0
+	BLO.S	.keepValue
+	MOVEQ	#15,D0
 	.keepValue:	
 	MOVE.B	D0,AUDIOCHLEVEL0NRM
 	_ok5:
@@ -402,17 +412,17 @@ __SET_PT_VISUALS:
 	BPL.S	.ok0		; below minvalue?
 	MOVEQ	#0,D0		; then set to minvalue
 	.ok0:
-	MOVE.B	D0,AUDIOCHLEVEL0	; RESET
+	MOVE.B	D0,AUDIOCHLEVEL0
 	_ok0:
 
 	; KICK
-	LEA	P61_visuctr1(PC),a0 ; which channel? 0-3
-	MOVEQ	#8,d0		; maxvalue
-	SUB.W	(a0),d0		; -#frames/irqs since instrument trigger
+	LEA	P61_visuctr1(PC),A0 ; which channel? 0-3
+	MOVEQ	#8,D0		; maxvalue
+	SUB.W	(A0),D0		; -#frames/irqs since instrument trigger
 	BPL.S	.ok1		; below minvalue?
-	MOVEQ	#0,d0		; then set to minvalue
+	MOVEQ	#0,D0		; then set to minvalue
 	.ok1:
-	MOVE.B	D0,AUDIOCHLEVEL1	; RESET
+	MOVE.B	D0,AUDIOCHLEVEL1
 	MULU.W	#$2,D0		; start from a darker shade
 	MOVE.L	D0,D3
 	ROL.L	#$4,D3		; expand bits to green
@@ -425,13 +435,13 @@ __SET_PT_VISUALS:
 	_ok1:
 
 	; BASS
-	LEA	P61_visuctr2(PC),a0 ; which channel? 0-3
-	MOVEQ	#15,d0		; maxvalue
-	SUB.W	(a0),d0		; -#frames/irqs since instrument trigger
+	LEA	P61_visuctr2(PC),A0 ; which channel? 0-3
+	MOVEQ	#15,D0		; maxvalue
+	SUB.W	(A0),D0		; -#frames/irqs since instrument trigger
 	BPL.S	.ok2		; below minvalue?
-	MOVEQ	#0,d0		; then set to minvalue
+	MOVEQ	#0,D0		; then set to minvalue
 	.ok2:
-	MOVE.B	D0,AUDIOCHLEVEL2	; RESET
+	MOVE.B	D0,AUDIOCHLEVEL2
 	_ok2:
 
 	; CYBORG
@@ -440,11 +450,14 @@ __SET_PT_VISUALS:
 	SUB.W	(A0),D0		; -#frames/irqs since instrument trigger
 	BPL.S	.ok3		; below minvalue?
 	MOVEQ	#0,D0		; then set to minvalue
-	MOVE.B	SCOLL_DIR_3,D1
-	NOT	D1
-	MOVE.B	D1,SCOLL_DIR_3
 	.ok3:
-	MOVE.B	D0,AUDIOCHLEVEL3	; RESET
+	MOVE.B	D0,AUDIOCHLEVEL3
+	;CMP.W	#15,D0
+	;BLO.W	.keepValue
+	;MOVE.B	SCOLL_DIR_3,D1
+	;NOT	D1
+	;MOVE.B	D1,SCOLL_DIR_3
+	;.keepValue:
 	_ok3:
 
 	MOVEM.L (SP)+,D0-A6
@@ -554,7 +567,7 @@ BG1_DATA:		INCBIN "BG_KONEY_DEMO_AMIGA_3.raw"
 
 SPRITES:		INCLUDE "sprite_KONEY.s"
 
-Module:		INCBIN "CrippledCyborgV3.P61"; code $9305
+Module:		INCBIN "CrippledCyborgV4.P61"; code $9305
 
 FONT:		DC.L 0,0	; SPACE CHAR
 		INCBIN "digital_font.raw",0
