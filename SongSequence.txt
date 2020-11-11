@@ -1,0 +1,67 @@
+Sequence of blocks in OctaMED SS song, by names
+v1.0 - AreXX script by www.KONEY.org 2020
+-----------------------------------------------
+0 0: EMPTY_BEGIN
+1 1: Solo Robot
+2 1: Solo Robot
+3 3: Robot + KassaImberlada
+4 4: Robot + KassaImberlada Kambio
+5 2: Robot + Kassa (pausa)
+6 2: Robot + Kassa (pausa)
+7 5: Robot + Ritmo + KassaIPERImb
+8 5: Robot + Ritmo + KassaIPERImb
+---------
+9 6: KASSA dritta + h?
+10 6: KASSA dritta + h?
+11 7: KASSA dritta gif2
+12 7: KASSA dritta gif2
+13 7: KASSA dritta gif2
+14 7: KASSA dritta gif2
+15 8: KAssa pause
+16 8: KAssa pause
+17 9: KAssa dritta
+18 9: KAssa dritta
+19 8: KAssa pause
+20 8: KAssa pause
+21 7: KASSA dritta gif2
+22 7: KASSA dritta gif2
+23 7: KASSA dritta gif2
+24 7: KASSA dritta gif2
+25 10: ARGH!
+26 11: Argh+ PArte di kick
+27 11: Argh+ PArte di kick
+28 11: Argh+ PArte di kick
+29 12: ARGH + kick
+30 12: ARGH + kick
+31 12: ARGH + kick
+32 10: ARGH!
+33 13: Argh +kick +GIF2
+34 13: Argh +kick +GIF2
+35 14: Argh +rull +gif2
+36 14: Argh +rull +gif2
+37 15: Argh + Casino
+38 15: Argh + Casino
+39 16: KASSADRITTA!
+40 16: KASSADRITTA!
+41 13: Argh +kick +GIF2
+42 17: KASSADRITTA2!
+43 17: KASSADRITTA2!
+44 17: KASSADRITTA2!
+45 12: ARGH + kick
+46 12: ARGH + kick
+47 12: ARGH + kick
+48 12: ARGH + kick
+49 11: Argh+ PArte di kick
+50 11: Argh+ PArte di kick
+51 17: KASSADRITTA2!
+52 17: KASSADRITTA2!
+53 7: KASSA dritta gif2
+54 7: KASSA dritta gif2
+55 5: Robot + Ritmo + KassaIPERImb
+56 5: Robot + Ritmo + KassaIPERImb
+57 4: Robot + KassaImberlada Kambio
+58 4: Robot + KassaImberlada Kambio
+59 1: Solo Robot
+60 1: Solo Robot
+61 18: FINE!
+-----------------------
