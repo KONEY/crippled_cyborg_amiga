@@ -2592,7 +2592,7 @@ P61_Trigger:
 	; ## KONEY FIX ##
 	MOVEQ #$F,D0			; Taken from P61_sete8
 	AND.B P61_Info(A5),D0		; now returns value
-	MOVE D0,P61_1F-P61_cn(A3)	; before only 1F
+	MOVE D0,P61_1F-P61_cn(A3)		; before only 1F
 	; ## KONEY FIX ##
 	;move.w d0,P61_PTrig+1-P61_cn(a3)	; Original line of code
 	bra.w P61_fxdone

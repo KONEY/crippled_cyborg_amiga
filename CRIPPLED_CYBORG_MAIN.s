@@ -17,7 +17,7 @@ bplsize=	bpl*h		; size of 1 bitplane screen
 hband=	10		; lines reserved for textscroller
 hblit=	h-hband		; size of blitter op without textscroller
 ;*************
-MODSTART_POS=1		; start music at position
+MODSTART_POS=0		; start music at position
 ;*************
 
 ;********** Demo **********	;Demo-specific non-startup code below.

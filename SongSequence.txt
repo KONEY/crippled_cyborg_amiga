@@ -51,7 +51,7 @@ v1.0 - AreXX script by www.KONEY.org 2020
 46 12: ARGH + kick
 47 12: ARGH + kick
 48 12: ARGH + kick
-49 11: Argh+ PArte di kick *
+49 11: Argh+ PArte di kick **
 50 11: Argh+ PArte di kick
 51 17: KASSADRITTA2!
 52 17: KASSADRITTA2!
