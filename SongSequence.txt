@@ -10,13 +10,13 @@ v1.0 - AreXX script by www.KONEY.org 2020
 6 2: Robot + Kassa (pausa)
 7 5: Robot + Ritmo + KassaIPERImb
 8 5: Robot + Ritmo + KassaIPERImb
----------
 9 6: KASSA dritta + h?
 10 6: KASSA dritta + h?
 11 7: KASSA dritta gif2
 12 7: KASSA dritta gif2
 13 7: KASSA dritta gif2
 14 7: KASSA dritta gif2
+---------
 15 8: KAssa pause
 16 8: KAssa pause
 17 9: KAssa dritta
@@ -47,11 +47,11 @@ v1.0 - AreXX script by www.KONEY.org 2020
 42 17: KASSADRITTA2!
 43 17: KASSADRITTA2!
 44 17: KASSADRITTA2!
-45 12: ARGH + kick
+45 12: ARGH + kick *
 46 12: ARGH + kick
 47 12: ARGH + kick
 48 12: ARGH + kick
-49 11: Argh+ PArte di kick
+49 11: Argh+ PArte di kick *
 50 11: Argh+ PArte di kick
 51 17: KASSADRITTA2!
 52 17: KASSADRITTA2!
