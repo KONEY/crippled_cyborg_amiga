@@ -16,7 +16,6 @@ v1.0 - AreXX script by www.KONEY.org 2020
 12 7: KASSA dritta gif2
 13 7: KASSA dritta gif2
 14 7: KASSA dritta gif2
----------
 15 8: KAssa pause
 16 8: KAssa pause
 17 9: KAssa dritta
@@ -39,6 +38,7 @@ v1.0 - AreXX script by www.KONEY.org 2020
 34 13: Argh +kick +GIF2
 35 14: Argh +rull +gif2
 36 14: Argh +rull +gif2
+---------
 37 15: Argh + Casino
 38 15: Argh + Casino
 39 16: KASSADRITTA!
