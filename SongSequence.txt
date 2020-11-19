@@ -38,12 +38,12 @@ v1.0 - AreXX script by www.KONEY.org 2020
 34 13: Argh +kick +GIF2
 35 14: Argh +rull +gif2
 36 14: Argh +rull +gif2
----------
 37 15: Argh + Casino
 38 15: Argh + Casino
 39 16: KASSADRITTA!
 40 16: KASSADRITTA!
 41 13: Argh +kick +GIF2
+---------
 42 17: KASSADRITTA2!
 43 17: KASSADRITTA2!
 44 17: KASSADRITTA2!
