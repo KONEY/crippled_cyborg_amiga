@@ -46,7 +46,6 @@ v1.0 - AreXX script by www.KONEY.org 2020
 42 17: KASSADRITTA2!
 43 17: KASSADRITTA2!
 44 17: KASSADRITTA2!
----------
 45 12: ARGH + kick *
 46 12: ARGH + kick
 47 12: ARGH + kick
@@ -55,6 +54,7 @@ v1.0 - AreXX script by www.KONEY.org 2020
 50 11: Argh+ PArte di kick
 51 17: KASSADRITTA2!
 52 17: KASSADRITTA2!
+---------
 53 7: KASSA dritta gif2
 54 7: KASSA dritta gif2
 55 5: Robot + Ritmo + KassaIPERImb
